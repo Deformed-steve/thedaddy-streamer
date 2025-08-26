@@ -1,36 +1,42 @@
 // scraper.js
-import fetch from "node-fetch";
-import * as cheerio from "cheerio";
+const PROXY = "https://api.allorigins.win/raw?url="; 
+const BASE = "https://thedaddy.top";
 
-export async function scrapeChannels() {
+// Fetch channels
+export async function fetchChannels() {
   try {
-    const res = await fetch("https://thedaddy.top/24-7-channels.php");
+    const res = await fetch(PROXY + encodeURIComponent(`${BASE}/24-7-channels.php`));
     const html = await res.text();
 
-    const $ = cheerio.load(html);
-    let channels = [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
 
-    // Each channel seems wrapped in <div class="channel"> or <a ...>
-    $("a").each((i, el) => {
-      const link = $(el).attr("href");
-      const text = $(el).text().trim();
+    const items = [...doc.querySelectorAll(".grid-item a")];
 
-      if (text && link && !link.startsWith("#")) {
-        channels.push({
-          name: text.replace(/\s+/g, " "), // clean extra spaces
-          url: link.startsWith("http") ? link : `https://thedaddy.top/${link}`
-        });
-      }
-    });
-
-    return channels;
+    return items.map(a => ({
+      name: a.innerText.trim(),
+      url: BASE + "/" + a.getAttribute("href")
+    }));
   } catch (err) {
-    console.error("Scraper error:", err);
+    console.error("Error fetching channels:", err);
     return [];
   }
 }
 
-// If run directly: node scraper.js
-if (process.argv[1] === new URL(import.meta.url).pathname) {
-  scrapeChannels().then(data => console.log(JSON.stringify(data, null, 2)));
+// Fetch iframe stream from channel page
+export async function fetchStream(channelUrl) {
+  try {
+    const res = await fetch(PROXY + encodeURIComponent(channelUrl));
+    const html = await res.text();
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    const iframe = doc.querySelector("iframe");
+
+    return iframe ? iframe.src : null;
+  } catch (err) {
+    console.error("Error fetching stream:", err);
+    return null;
+  }
 }
