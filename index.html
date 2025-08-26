@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live TV Streamer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #333; }
+    ul { list-style-type: none; padding: 0; }
+    li { margin: 10px 0; }
+    button { padding: 5px 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Live TV Channels</h1>
+  <ul id="channel-list"></ul>
+  <div id="player" style="display:none;">
+    <video id="video-player" controls autoplay></video>
+  </div>
+
+  <script>
+    async function fetchChannels() {
+      const response = await fetch('/api/channels');
+      const channels = await response.json();
+      const list = document.getElementById('channel-list');
+      channels.forEach(channel => {
+        const li = document.createElement('li');
+        li.textContent = channel.name;
+        const button = document.createElement('button');
+        button.textContent = 'Watch';
+        button.onclick = () => playStream(channel.link);
+        li.appendChild(button);
+        list.appendChild(li);
+      });
+    }
+
+    async function playStream(url) {
+      const response = await fetch(`/api/stream?url=${encodeURIComponent(url)}`);
+      const data = await response.json();
+      if (data.m3u8Url) {
+        const player = document.getElementById('player');
+        const videoPlayer = document.getElementById('video-player');
+        videoPlayer.src = data.m3u8Url;
+        player.style.display = 'block';
+      } else {
+        alert('Stream not available');
+      }
+    }
+
+    fetchChannels();
+  </script>
+</body>
+</html>
