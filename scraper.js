@@ -8,51 +8,48 @@ async function fetchChannelLinks() {
     const { data } = await axios.get(baseUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
     });
+
     const $ = cheerio.load(data);
     const channels = [];
 
-    $('div.grid-item a').each((index, element) => {
-      const name = $(element).text().trim();
-      const link = $(element).attr('href');
+    $('div.grid-item a').each((i, el) => {
+      const name = $(el).text().trim();
+      let link = $(el).attr('href');
       if (name && link) {
+        // convert to embed URL
+        link = link.replace('/stream/', '/embed/');
         channels.push({ name, link: `https://thedaddy.top${link}` });
       }
     });
 
     return channels;
-  } catch (error) {
-    console.error('Error fetching channel links:', error);
+  } catch (err) {
+    console.error('Error fetching channels:', err);
     return [];
   }
 }
 
-async function fetchM3U8Url(channelUrl) {
+async function fetchStreamUrl(embedUrl) {
   try {
-    const { data } = await axios.get(channelUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    const { data } = await axios.get(embedUrl, {
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Referer': 'https://thedaddy.top/'
+      }
     });
 
-    const $ = cheerio.load(data);
+    // Look for JWPlayer / HLS setup
+    const match = data.match(/file\s*:\s*"(https?:\/\/[^"]+\.m3u8)"/);
+    if (match) return match[1];
 
-    // Try <video source> first
-    let m3u8Url = $('video source').attr('src');
+    const sourcesMatch = data.match(/sources\s*:\s*\[\s*{file\s*:\s*"(https?:\/\/[^"]+\.m3u8)"/);
+    if (sourcesMatch) return sourcesMatch[1];
 
-    if (!m3u8Url) {
-      // fallback: parse scripts for m3u8
-      const scriptText = $('script')
-        .map((i, el) => $(el).html())
-        .get()
-        .join(' ');
-
-      const match = scriptText.match(/"(https?:\/\/[^"]+\.m3u8)"/);
-      if (match) m3u8Url = match[1];
-    }
-
-    return m3u8Url || null;
-  } catch (error) {
-    console.error(`Error fetching M3U8 URL from ${channelUrl}:`, error);
+    return null;
+  } catch (err) {
+    console.error(`Error fetching stream from ${embedUrl}:`, err);
     return null;
   }
 }
 
-module.exports = { fetchChannelLinks, fetchM3U8Url };
+module.exports = { fetchChannelLinks, fetchStreamUrl };
