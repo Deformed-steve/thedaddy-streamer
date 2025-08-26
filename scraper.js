@@ -4,7 +4,7 @@ const player = document.getElementById("player");
 
 async function loadChannels() {
   try {
-    const res = await fetch("https://corsproxy.io/?https://thedaddy.top/24-7-channels");
+    const res = await fetch("https://corsproxy.io/?https://thedaddy.top/24-7-channels.php");
     const html = await res.text();
 
     // Parse HTML
